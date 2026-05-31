@@ -10,4 +10,3 @@ echo SW-Cache: werwolf-v%NEW%
 git add .
 git commit -m "Deploy %date% %time%"
 git push
-pause
