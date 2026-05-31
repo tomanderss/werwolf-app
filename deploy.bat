@@ -1,12 +1,12 @@
 @echo off
 cd /d C:\Users\tom-a\werwolf-app
 
-:: Auto-increment service worker cache version
-for /f "tokens=2 delims=-" %%A in ('findstr /r "werwolf-v[0-9]*" sw.js') do set OLD=%%A
-for /f "tokens=2 delims=v" %%B in ('findstr /r "werwolf-v[0-9]*" sw.js') do set /a NEW=%%B+1
-powershell -Command "(Get-Content sw.js) -replace 'werwolf-v[0-9]+', 'werwolf-v%NEW%' | Set-Content sw.js"
-powershell -Command "[IO.File]::WriteAllText('js/buildinfo.js', \"export const BUILD = '0.%NEW%';`n\", [Text.Encoding]::UTF8)"
-echo Deployed: v%NEW%
+:: Auto-increment version via PowerShell
+for /f %%V in ('powershell -Command "[regex]::Match((Get-Content sw.js -Raw), 'werwolf-v(\d+)').Groups[1].Value"') do set CURR=%%V
+set /a NEW=%CURR%+1
+powershell -Command "(Get-Content sw.js -Raw) -replace 'werwolf-v\d+', 'werwolf-v%NEW%' | Set-Content sw.js -NoNewline"
+powershell -Command "[IO.File]::WriteAllText((Resolve-Path 'js/buildinfo.js'), \"export const BUILD = '0.%NEW%';`n\", [Text.Encoding]::UTF8)"
+echo Deployed: 0.%NEW%
 
 git add .
 git commit -m "Deploy %date% %time%"
