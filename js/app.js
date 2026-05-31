@@ -1030,10 +1030,10 @@ const HomeScreen = {
   },
   template: `
     <div class="screen screen-home">
-      <div style="position:absolute;top:10px;right:14px;font-size:0.65rem;color:var(--text3);opacity:0.6">{{ BUILD }}</div>
       <div class="home-header">
         <div class="home-title">🐺 Werwolf</div>
         <div class="home-subtitle">Moderator</div>
+        <div style="font-size:0.65rem;color:var(--text3);margin-top:6px;opacity:0.7">Version {{ BUILD }}</div>
       </div>
       <div class="home-menu">
         <div v-if="hasActive" class="home-menu-item resume" @click="navigate('game')">

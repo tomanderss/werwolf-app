@@ -71,7 +71,6 @@ body {
 /* ── HOME SCREEN SAFE AREA ── */
 .screen-home {
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
-  position: relative;
 }
 .home-header {
   text-align: center;
