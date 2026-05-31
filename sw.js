@@ -7,6 +7,7 @@ const ASSETS = [
   './js/storage.js',
   './js/logic.js',
   './js/app.js',
+  './js/buildinfo.js',
 ];
 
 self.addEventListener('install', e => {

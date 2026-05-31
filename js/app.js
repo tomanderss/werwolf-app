@@ -1,4 +1,5 @@
 import { createApp, reactive, computed, watch, nextTick } from './vue.esm-browser.prod.js';
+import { BUILD } from './buildinfo.js';
 import { ROLES, ROLE_ORDER, DEFAULT_ROLE_COUNTS, DEFAULT_NIGHT_ORDER, computeNightSteps } from './data.js';
 import { loadPlayers, savePlayers, loadHistory, saveHistory, loadActiveGame, saveActiveGame, loadSettings, saveSettings, generateId, createBackup, loadBackups, restoreBackup, exportToFile, importFromFile } from './storage.js';
 import { createGame, emptyNightActions, resolveNight, checkWinCondition, buildGameStats, computePlayerStats, computeRoleStats } from './logic.js';
@@ -1025,13 +1026,14 @@ const HomeScreen = {
   setup() {
     const hasActive = computed(() => state.game && state.game.phase !== 'over');
     const hasPlayers = computed(() => state.savedPlayers.length > 0);
-    return { state, hasActive, hasPlayers, navigate, startSetup, startSetupWithReveal, toggleTheme, toggleTestMode };
+    return { state, hasActive, hasPlayers, navigate, startSetup, startSetupWithReveal, toggleTheme, toggleTestMode, BUILD };
   },
   template: `
     <div class="screen screen-home">
       <div class="home-header">
         <div class="home-title">🐺 Werwolf</div>
         <div class="home-subtitle">Moderator</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:4px">{{ BUILD }}</div>
       </div>
       <div class="home-menu">
         <div v-if="hasActive" class="home-menu-item resume" @click="navigate('game')">
