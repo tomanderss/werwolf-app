@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<p>Generiert Icons — bitte kurz warten, dann werden zwei Dateien heruntergeladen.</p>
+<canvas id="c"></canvas>
+<script>
+function makeIcon(size) {
+  const canvas = document.getElementById('c');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#1a1a2e');
+  grad.addColorStop(1, '#16213e');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.18);
+  ctx.fill();
+
+  // Purple glow circle
+  const glow = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size*0.45);
+  glow.addColorStop(0, 'rgba(124,58,237,0.4)');
+  glow.addColorStop(1, 'rgba(124,58,237,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  // Wolf emoji
+  ctx.font = `${size * 0.55}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🐺', size / 2, size / 2 + size * 0.04);
+
+  return canvas.toDataURL('image/png');
+}
+
+function download(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+setTimeout(() => {
+  download(makeIcon(192), 'icon-192.png');
+  setTimeout(() => download(makeIcon(512), 'icon-512.png'), 500);
+}, 300);
+</script>
+</body>
+</html>
