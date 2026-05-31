@@ -1,4 +1,4 @@
-const CACHE = 'werwolf-v17';
+const CACHE = 'werwolf-v18';
 const ASSETS = [
   './index.html',
   './css/styles.css',
@@ -24,6 +24,12 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE).then(cache => cache.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
