@@ -462,16 +462,25 @@ function wolfCount() {
 function nightCanConfirm() {
   const step = currentStep();
   if (!step) return false;
+  const g = state.game;
   const sel = state.nightUI.selectedIds;
 
-  if (step.id === 'wolves-reveal') return state.game.rolesAutoAssigned || sel.length === wolfCount();
-  if (step.id === 'amor') return sel.length === 2 && state.game.players.some(p => p.role === 'amor' && p.isAlive);
-  if (step.id === 'hure') return sel.length === 1;
-  if (step.id === 'seherin') return state.nightUI.seerinRevealed;
+  // Generic: role must be assigned before any step can be confirmed (manual mode).
+  // wolves-reveal is exempt — it IS the assignment step for wolves.
+  const roleKnown = (roleId) =>
+    !roleId || g.rolesAutoAssigned || g.players.some(p => p.role === roleId && p.isAlive);
+
+  if (step.id !== 'wolves-reveal' && !roleKnown(step.role)) return false;
+
+  // Step-specific action requirements
+  if (step.id === 'wolves-reveal') return g.rolesAutoAssigned || sel.length === wolfCount();
+  if (step.id === 'amor')          return sel.length === 2;
+  if (step.id === 'hure')          return sel.length === 1;
+  if (step.id === 'seherin')       return state.nightUI.seerinRevealed;
   if (step.id === 'wolves-attack') return sel.length === 1;
-  if (step.id === 'beschuetzer') return sel.length === 1;
-  if (step.id === 'hexe') return true; // always can skip
-  return false;
+  if (step.id === 'beschuetzer')   return sel.length === 1;
+  if (step.id === 'hexe')          return true;
+  return false; // unknown future step → blocked until explicitly handled
 }
 
 function nightConfirm() {
