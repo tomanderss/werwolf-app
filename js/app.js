@@ -623,6 +623,7 @@ function doNightResolve() {
     loverDiedBecause: null,
     loverDiedCause: null,
     pendingLoverDeath: null,
+    voteRoleAssignId: null,
   };
 
   g.nightStepIndex = 0;
@@ -795,35 +796,7 @@ function confirmHauptmannInit(id) {
   saveActiveGame(g);
 }
 
-function confirmVote() {
-  const g = state.game;
-  const targetId = state.dayUI.voteTarget;
-
-  if (!targetId || targetId === 'none') {
-    // No one voted out
-    g.log.push({ round: g.round, phase: 'day', action: 'vote', desc: 'Keine Mehrheit — niemand ausgeschieden' });
-    startNewNight();
-    return;
-  }
-
-  const target = playerById(targetId);
-  if (!target) return;
-
-  // Check Dorfidiot
-  if (target.role === 'dorfidiot') {
-    state.dayUI.showDorfidiotReveal = true;
-    state.dayUI.dayPhase = 'dorfidiot';
-    g.log.push({ round: g.round, phase: 'day', action: 'dorfidiot', desc: `${target.name} ist der Dorfidiot — bleibt im Spiel` });
-    return;
-  }
-
-  // Kill target
-  target.isAlive = false;
-  target.diedRound = g.round;
-  target.diedPhase = 'day';
-  target.diedCause = 'vote';
-  g.log.push({ round: g.round, phase: 'day', action: 'vote', desc: `${target.name} ausgeschieden` });
-
+function afterVoteKill(g, target, targetId) {
   // Love partner instant death — check BEFORE hauptmann logic so it's never skipped
   let loverPartner = null;
   if (g.loverIds?.includes(targetId)) {
@@ -863,8 +836,68 @@ function confirmVote() {
 
   const win = checkWinCondition(g);
   if (win.over) { endGame(win); return; }
-
   startNewNight();
+}
+
+function confirmVote() {
+  const g = state.game;
+  const targetId = state.dayUI.voteTarget;
+
+  if (!targetId || targetId === 'none') {
+    g.log.push({ round: g.round, phase: 'day', action: 'vote', desc: 'Keine Mehrheit — niemand ausgeschieden' });
+    startNewNight();
+    return;
+  }
+
+  const target = playerById(targetId);
+  if (!target) return;
+
+  // Check Dorfidiot (only if role already known)
+  if (target.role === 'dorfidiot') {
+    state.dayUI.showDorfidiotReveal = true;
+    state.dayUI.dayPhase = 'dorfidiot';
+    g.log.push({ round: g.round, phase: 'day', action: 'dorfidiot', desc: `${target.name} ist der Dorfidiot — bleibt im Spiel` });
+    return;
+  }
+
+  // Kill target
+  target.isAlive = false;
+  target.diedRound = g.round;
+  target.diedPhase = 'day';
+  target.diedCause = 'vote';
+  g.log.push({ round: g.round, phase: 'day', action: 'vote', desc: `${target.name} hingerichtet` });
+
+  // If role unknown → mandatory role reveal before proceeding
+  if (target.role === 'unknown' && !g.rolesAutoAssigned) {
+    state.dayUI.dayPhase = 'vote-role-assign';
+    state.dayUI.voteRoleAssignId = targetId;
+    saveActiveGame(g);
+    return;
+  }
+
+  afterVoteKill(g, target, targetId);
+}
+
+function continueAfterVoteRoleAssign() {
+  const g = state.game;
+  const targetId = state.dayUI.voteRoleAssignId;
+  const target = playerById(targetId);
+  state.dayUI.voteRoleAssignId = null;
+
+  // If revealed as Dorfidiot → un-kill and show reveal
+  if (target.role === 'dorfidiot') {
+    target.isAlive = true;
+    target.diedRound = null;
+    target.diedPhase = null;
+    target.diedCause = null;
+    state.dayUI.showDorfidiotReveal = true;
+    state.dayUI.dayPhase = 'dorfidiot';
+    g.log.push({ round: g.round, phase: 'day', action: 'dorfidiot', desc: `${target.name} ist der Dorfidiot — bleibt im Spiel` });
+    saveActiveGame(g);
+    return;
+  }
+
+  afterVoteKill(g, target, targetId);
 }
 
 function continueAfterLoverDeath() {
@@ -906,7 +939,7 @@ function startNewNight() {
   g.nightSteps = computeNightSteps(g, g.nightOrder);
   g.nightActions = emptyNightActions();
   g.dayState = null;
-  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths', jaegerSplash: false, loverDiedPartner: null, loverDiedBecause: null, loverDiedCause: null, pendingLoverDeath: null };
+  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths', jaegerSplash: false, loverDiedPartner: null, loverDiedBecause: null, loverDiedCause: null, pendingLoverDeath: null, voteRoleAssignId: null };
   resetNightUI();
   saveActiveGame(g);
 }
@@ -1379,7 +1412,7 @@ const GameScreen = {
       startDay, deathCauseLabel,
       dayNights, advanceDayPhase, confirmJaeger,
       confirmHauptmann, randomHauptmann, randomHauptmannInit, confirmHauptmannReveal, confirmHauptmannInit, confirmVote, confirmHauptmannSuccessor,
-      continueAfterLoverDeath,
+      continueAfterLoverDeath, continueAfterVoteRoleAssign,
       startNewNight, abandonGame, navigate, openModal,
       formatDate, teamLabel
     };
@@ -2107,23 +2140,6 @@ const GameScreen = {
                 </div>
               </div>
             </div>
-            <!-- Role reveal before vote confirm if role unknown -->
-            <div v-if="!g.rolesAutoAssigned && state.dayUI.voteTarget && state.dayUI.voteTarget !== 'none' && playerById(state.dayUI.voteTarget)?.role === 'unknown'"
-                 class="card mt-3" style="border-color:var(--gold);background:rgba(217,119,6,0.08)">
-              <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">
-                Rolle von <strong>{{ playerById(state.dayUI.voteTarget)?.name }}</strong> enthüllen:
-              </div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                <template v-for="rid in ['werwolf','seherin','hexe','jaeger','hure','amor','beschuetzer','dorfidiot','dorfbewohner']" :key="rid">
-                  <button v-if="g.roleCounts[rid] > 0 && g.players.filter(p => p.role === rid).length < g.roleCounts[rid]"
-                          class="btn btn-secondary btn-sm"
-                          style="font-size:0.8rem;padding:6px 10px"
-                          @click="assignRole(state.dayUI.voteTarget, rid)">
-                    {{ ROLES[rid]?.icon }} {{ ROLES[rid]?.name }}
-                  </button>
-                </template>
-              </div>
-            </div>
             <button v-if="state.testMode" class="btn btn-full mt-3"
                     style="background:rgba(249,115,22,0.15);border:1px solid #f97316;color:#fb923c;font-size:0.85rem"
                     @click="state.dayUI.voteTarget = alive[Math.floor(Math.random()*alive.length)]?.id">
@@ -2134,6 +2150,25 @@ const GameScreen = {
                     @click="confirmVote">
               ✅ Abstimmung bestätigen
             </button>
+          </div>
+
+          <!-- Mandatory role assign after vote kill -->
+          <div v-if="state.dayUI.dayPhase === 'vote-role-assign' && state.dayUI.voteRoleAssignId">
+            <div class="day-header">
+              <div class="day-icon">❓</div>
+              <div class="day-title">Rolle enthüllen</div>
+              <div class="day-subtitle">{{ playerById(state.dayUI.voteRoleAssignId)?.name }} wurde hingerichtet — welche Rolle hatte sie?</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+              <template v-for="rid in ['werwolf','seherin','hexe','jaeger','hure','amor','beschuetzer','dorfidiot','dorfbewohner']" :key="rid">
+                <button v-if="g.roleCounts[rid] > 0 && g.players.filter(p => p.role === rid).length < g.roleCounts[rid]"
+                        class="btn btn-secondary btn-full btn-lg"
+                        style="font-size:0.95rem"
+                        @click="assignRole(state.dayUI.voteRoleAssignId, rid); continueAfterVoteRoleAssign()">
+                  {{ ROLES[rid]?.icon }} {{ ROLES[rid]?.name }}
+                </button>
+              </template>
+            </div>
           </div>
 
           <!-- Dorfidiot reveal -->

@@ -98,10 +98,16 @@ export function restoreBackup(slotIdx) {
 }
 
 // ─── FILE EXPORT / IMPORT ─────────────────────────────────────────────────────
-export async function exportToFile(players, history, activeGame, settings) {
-  const filename = `werwolf-${new Date().toISOString().slice(0,10)}.json`;
+function buildTimestamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+}
+
+export async function exportToFile(players, history, activeGame, settings, type = 'manual') {
+  const filename = `${type}-werwolf-backup-${buildTimestamp()}.json`;
   const payload  = JSON.stringify({
-    ts: Date.now(), v: 1, label: 'manual',
+    ts: Date.now(), v: 1, label: type,
     players, history, activeGame, settings,
   }, null, 2);
   const blob = new Blob([payload], { type: 'application/json' });
