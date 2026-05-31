@@ -2055,8 +2055,8 @@ const GameScreen = {
           <div v-if="state.dayUI.dayPhase === 'hauptmann-successor'">
             <div class="day-header">
               <div class="day-icon">👑</div>
-              <div class="day-title">Hauptmann-Nachfolger</div>
-              <div class="day-subtitle">Der Hauptmann ernennt seinen Nachfolger</div>
+              <div class="day-title">Letzter Wille des Hauptmanns</div>
+              <div class="day-subtitle">Der sterbende Hauptmann bestimmt seinen Nachfolger</div>
             </div>
             <div class="player-grid mt-3">
               <div v-for="p in alive" :key="p.id"
