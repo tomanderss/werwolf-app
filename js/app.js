@@ -634,6 +634,15 @@ function startDay() {
   const g = state.game;
   g.phase = 'day';
 
+  // If Hauptmann died at night, clear title immediately
+  if (g.hauptmannId) {
+    const hauptmann = playerById(g.hauptmannId);
+    if (!hauptmann?.isAlive) {
+      if (hauptmann) hauptmann.isHauptmann = false;
+      g.hauptmannId = null;
+    }
+  }
+
   // Jäger shoots BEFORE win condition — he may take the last wolf with him
   if (g.dayState.jaegerMustAct) {
     state.dayUI.dayPhase = 'jaeger';
