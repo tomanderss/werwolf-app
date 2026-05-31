@@ -1,1 +1,1 @@
-﻿export const BUILD = 'v16 ┬À 31.05.2026 13:36';
+﻿export const BUILD = '0.16';
