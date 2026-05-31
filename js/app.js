@@ -620,6 +620,7 @@ function doNightResolve() {
     loverSplash: null,
     loverDiedPartner: null,
     loverDiedBecause: null,
+    loverDiedCause: null,
     pendingLoverDeath: null,
   };
 
@@ -834,6 +835,7 @@ function confirmVote() {
     target.isHauptmann = false;
     state.dayUI.pendingLoverDeath = loverPartner;
     state.dayUI.loverDiedBecause = loverPartner ? target.name : null;
+    state.dayUI.loverDiedCause = loverPartner ? 'vote' : null;
     state.dayUI.dayPhase = 'hauptmann-successor';
     saveActiveGame(g);
     return;
@@ -844,6 +846,7 @@ function confirmVote() {
     state.dayUI.dayPhase = 'lover-died';
     state.dayUI.loverDiedPartner = loverPartner;
     state.dayUI.loverDiedBecause = target.name;
+    state.dayUI.loverDiedCause = 'vote';
     saveActiveGame(g);
     return;
   }
@@ -893,7 +896,7 @@ function startNewNight() {
   g.nightSteps = computeNightSteps(g, g.nightOrder);
   g.nightActions = emptyNightActions();
   g.dayState = null;
-  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths', jaegerSplash: false, loverDiedPartner: null, loverDiedBecause: null, pendingLoverDeath: null };
+  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths', jaegerSplash: false, loverDiedPartner: null, loverDiedBecause: null, loverDiedCause: null, pendingLoverDeath: null };
   resetNightUI();
   saveActiveGame(g);
 }
@@ -1918,7 +1921,16 @@ const GameScreen = {
               <div class="jaeger-splash-inner" style="max-width:360px;width:100%">
                 <div style="font-size:5rem;line-height:1">💔</div>
                 <div class="jaeger-splash-title" style="color:#f43f5e">{{ state.dayUI.loverDiedPartner.name }}</div>
-                <div class="jaeger-splash-desc">stirbt sofort vor Kummer!<br>{{ state.dayUI.loverDiedBecause ? state.dayUI.loverDiedBecause + ' wurde ausgeschieden.' : 'Der Liebespartner ist gestorben.' }}</div>
+                <div class="jaeger-splash-desc">stirbt vor Kummer —<br>
+                  <span v-if="state.dayUI.loverDiedBecause">
+                    {{ state.dayUI.loverDiedBecause }}
+                    {{ state.dayUI.loverDiedCause === 'vote' ? 'wurde vom Dorf hingerichtet.' : '' }}
+                    {{ state.dayUI.loverDiedCause === 'wolves' || state.dayUI.loverDiedCause === 'wolves-hure' ? 'wurde von den Werwölfen getötet.' : '' }}
+                    {{ state.dayUI.loverDiedCause === 'witch' ? 'wurde von der Hexe vergiftet.' : '' }}
+                    {{ state.dayUI.loverDiedCause === 'jaeger' ? 'wurde vom Jäger mitgerissen.' : '' }}
+                  </span>
+                  <span v-else>Der Liebespartner ist gestorben.</span>
+                </div>
 
                 <!-- Role picker for the dead partner -->
                 <div v-if="!g.rolesAutoAssigned && state.dayUI.loverDiedPartner.role === 'unknown'" style="margin-top:20px;text-align:left">
