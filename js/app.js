@@ -619,6 +619,8 @@ function doNightResolve() {
     jaegerSplash: false,
     loverSplash: null,
     loverDiedPartner: null,
+    loverDiedBecause: null,
+    pendingLoverDeath: null,
   };
 
   g.nightStepIndex = 0;
@@ -811,16 +813,8 @@ function confirmVote() {
   target.diedCause = 'vote';
   g.log.push({ round: g.round, phase: 'day', action: 'vote', desc: `${target.name} ausgeschieden` });
 
-  // Hauptmann nachfolger
-  if (g.hauptmannId === targetId) {
-    g.hauptmannId = null;
-    target.isHauptmann = false;
-    state.dayUI.dayPhase = 'hauptmann-successor';
-    saveActiveGame(g);
-    return;
-  }
-
-  // Love partner instant death
+  // Love partner instant death — check BEFORE hauptmann logic so it's never skipped
+  let loverPartner = null;
   if (g.loverIds?.includes(targetId)) {
     const partnerId = g.loverIds.find(id => id !== targetId);
     const partner = playerById(partnerId);
@@ -830,12 +824,28 @@ function confirmVote() {
       partner.diedPhase = 'day-heartbreak';
       partner.diedCause = 'heartbreak';
       g.log.push({ round: g.round, phase: 'day', action: 'heartbreak', desc: `${partner.name} stirbt vor Kummer` });
-      // Show blocking lover-died phase with role picker before proceeding
-      state.dayUI.dayPhase = 'lover-died';
-      state.dayUI.loverDiedPartner = partner;
-      saveActiveGame(g);
-      return;
+      loverPartner = partner;
     }
+  }
+
+  // Hauptmann nachfolger
+  if (g.hauptmannId === targetId) {
+    g.hauptmannId = null;
+    target.isHauptmann = false;
+    state.dayUI.pendingLoverDeath = loverPartner;
+    state.dayUI.loverDiedBecause = loverPartner ? target.name : null;
+    state.dayUI.dayPhase = 'hauptmann-successor';
+    saveActiveGame(g);
+    return;
+  }
+
+  // Show lover death splash
+  if (loverPartner) {
+    state.dayUI.dayPhase = 'lover-died';
+    state.dayUI.loverDiedPartner = loverPartner;
+    state.dayUI.loverDiedBecause = target.name;
+    saveActiveGame(g);
+    return;
   }
 
   const win = checkWinCondition(g);
@@ -860,7 +870,16 @@ function confirmHauptmannSuccessor(id) {
   player.isHauptmann = true;
   g.log.push({ round: g.round, phase: 'day', action: 'hauptmann', desc: `${player.name} wird neuer Hauptmann` });
 
-  // Love partner check already done before
+  // Show pending lover death splash (voted person was also a lover)
+  if (state.dayUI.pendingLoverDeath) {
+    const partner = state.dayUI.pendingLoverDeath;
+    state.dayUI.pendingLoverDeath = null;
+    state.dayUI.dayPhase = 'lover-died';
+    state.dayUI.loverDiedPartner = partner;
+    saveActiveGame(g);
+    return;
+  }
+
   const win = checkWinCondition(g);
   if (win.over) { endGame(win); return; }
   startNewNight();
@@ -874,7 +893,7 @@ function startNewNight() {
   g.nightSteps = computeNightSteps(g, g.nightOrder);
   g.nightActions = emptyNightActions();
   g.dayState = null;
-  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths' };
+  state.dayUI = { voteTarget: null, jagerTarget: null, hauptmannTarget: null, showDorfidiotReveal: false, showLoverDeath: null, dayPhase: 'deaths', jaegerSplash: false, loverDiedPartner: null, loverDiedBecause: null, pendingLoverDeath: null };
   resetNightUI();
   saveActiveGame(g);
 }
@@ -1876,16 +1895,18 @@ const GameScreen = {
                   </template>
                 </div>
               </div>
-              <!-- Edit role if known -->
-              <div v-else style="margin-top:6px;padding-left:34px">
+              <!-- Edit role if known (not in auto-assign mode) -->
+              <div v-else-if="!g.rolesAutoAssigned" style="margin-top:6px;padding-left:34px">
                 <button class="btn btn-sm btn-secondary" style="padding:3px 8px;font-size:0.72rem"
                         @click="assignRole(d.playerId, 'unknown')">✏️ Rolle ändern</button>
               </div>
             </div>
           </div>
 
-          <button class="btn btn-primary btn-full btn-lg mt-4" @click="startDay">
-            ☀️ Tag beginnen
+          <button class="btn btn-primary btn-full btn-lg mt-4"
+                  :disabled="!g.rolesAutoAssigned && g.dayState.deaths.some(d => playerById(d.playerId)?.role === 'unknown')"
+                  @click="startDay">
+            {{ !g.rolesAutoAssigned && g.dayState.deaths.some(d => playerById(d.playerId)?.role === 'unknown') ? '⚠️ Erst alle Rollen eintragen' : '☀️ Tag beginnen' }}
           </button>
         </div>
 
@@ -1897,10 +1918,10 @@ const GameScreen = {
               <div class="jaeger-splash-inner" style="max-width:360px;width:100%">
                 <div style="font-size:5rem;line-height:1">💔</div>
                 <div class="jaeger-splash-title" style="color:#f43f5e">{{ state.dayUI.loverDiedPartner.name }}</div>
-                <div class="jaeger-splash-desc">stirbt sofort vor Kummer — der Liebespartner wurde ausgeschieden.</div>
+                <div class="jaeger-splash-desc">stirbt sofort vor Kummer!<br>{{ state.dayUI.loverDiedBecause ? state.dayUI.loverDiedBecause + ' wurde ausgeschieden.' : 'Der Liebespartner ist gestorben.' }}</div>
 
                 <!-- Role picker for the dead partner -->
-                <div v-if="state.dayUI.loverDiedPartner.role === 'unknown'" style="margin-top:20px;text-align:left">
+                <div v-if="!g.rolesAutoAssigned && state.dayUI.loverDiedPartner.role === 'unknown'" style="margin-top:20px;text-align:left">
                   <div style="font-size:0.82rem;color:var(--text2);margin-bottom:8px">Welche Rolle hatte {{ state.dayUI.loverDiedPartner.name }}?</div>
                   <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
                     <template v-for="rid in ['werwolf','seherin','hexe','jaeger','hure','amor','beschuetzer','dorfidiot','dorfbewohner']" :key="rid">
@@ -1954,7 +1975,7 @@ const GameScreen = {
               </div>
             </div>
             <!-- Role reveal for jaeger target if unknown -->
-            <div v-if="state.dayUI.jagerTarget && playerById(state.dayUI.jagerTarget)?.role === 'unknown'"
+            <div v-if="!g.rolesAutoAssigned && state.dayUI.jagerTarget && playerById(state.dayUI.jagerTarget)?.role === 'unknown'"
                  class="card mt-3" style="border-color:var(--red);background:rgba(220,38,38,0.05)">
               <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">
                 Rolle von <strong>{{ playerById(state.dayUI.jagerTarget)?.name }}</strong> enthüllen:
@@ -2065,7 +2086,7 @@ const GameScreen = {
               </div>
             </div>
             <!-- Role reveal before vote confirm if role unknown -->
-            <div v-if="state.dayUI.voteTarget && state.dayUI.voteTarget !== 'none' && playerById(state.dayUI.voteTarget)?.role === 'unknown'"
+            <div v-if="!g.rolesAutoAssigned && state.dayUI.voteTarget && state.dayUI.voteTarget !== 'none' && playerById(state.dayUI.voteTarget)?.role === 'unknown'"
                  class="card mt-3" style="border-color:var(--gold);background:rgba(217,119,6,0.08)">
               <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">
                 Rolle von <strong>{{ playerById(state.dayUI.voteTarget)?.name }}</strong> enthüllen:

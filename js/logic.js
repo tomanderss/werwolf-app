@@ -125,7 +125,7 @@ export function checkWinCondition(game) {
   if (wolves.length === 0) {
     return { over: true, winnerTeam: 'village', winners: nonWolves };
   }
-  if (wolves.length >= nonWolves.length) {
+  if (wolves.length > 0 && nonWolves.length === 0) {
     return { over: true, winnerTeam: 'wolves', winners: wolves };
   }
   return { over: false };
