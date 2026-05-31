@@ -64,7 +64,7 @@ export const ROLES = {
 export const ROLE_ORDER = ['werwolf', 'seherin', 'hexe', 'jaeger', 'hure', 'amor', 'beschuetzer', 'dorfidiot', 'dorfbewohner'];
 
 export const DEFAULT_ROLE_COUNTS = {
-  werwolf: 2, seherin: 1, hexe: 0, jaeger: 0,
+  werwolf: 1, seherin: 0, hexe: 0, jaeger: 0,
   hure: 0, amor: 0, beschuetzer: 0, dorfidiot: 0
 };
 
