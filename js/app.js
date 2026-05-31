@@ -2023,7 +2023,7 @@ const GameScreen = {
             <div class="day-header">
               <div class="day-icon">👑</div>
               <div class="day-title">Hauptmann wählen</div>
-              <div class="day-subtitle">{{ g.hauptmannMethod === 'random' ? 'Zufällige Auswahl' : 'Das Dorf wählt seinen Hauptmann' }}</div>
+              <div class="day-subtitle">{{ g.hauptmannMethod === 'random' ? 'Zufällige Auswahl' : 'Der sterbende Hauptmann bestimmt seinen Nachfolger' }}</div>
             </div>
             <div v-if="g.hauptmannMethod === 'random'">
               <div class="player-grid mt-3">
