@@ -2060,25 +2060,13 @@ const GameScreen = {
             </button>
           </div>
 
-          <!-- Hauptmann election -->
+          <!-- Hauptmann election (mid-game — always manual, random only at game start) -->
           <div v-if="state.dayUI.dayPhase === 'hauptmann'">
             <div class="day-header">
               <div class="day-icon">👑</div>
-              <div class="day-title">Hauptmann wählen</div>
-              <div class="day-subtitle">{{ g.hauptmannMethod === 'random' ? 'Zufällige Auswahl' : 'Der sterbende Hauptmann bestimmt seinen Nachfolger' }}</div>
+              <div class="day-title">Der sterbende Hauptmann bestimmt seinen Nachfolger</div>
             </div>
-            <div v-if="g.hauptmannMethod === 'random'">
-              <div class="player-grid mt-3">
-                <div v-for="p in alive" :key="p.id" class="player-chip">
-                  <span class="chip-icon">{{ ROLES[p.role]?.icon }}</span>
-                  <span class="chip-name">{{ p.name }}</span>
-                </div>
-              </div>
-              <button class="btn btn-gold btn-full btn-lg mt-4" @click="randomHauptmann">
-                🎲 Zufällig auslosen
-              </button>
-            </div>
-            <div v-else>
+            <div>
               <div class="night-instruction">Tippe auf den Spieler, der zum Hauptmann gewählt wurde:</div>
               <div class="player-grid mt-3">
                 <div v-for="p in alive" :key="p.id"

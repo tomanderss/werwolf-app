@@ -1,1 +1,1 @@
-﻿export const BUILD = '0.24';
+﻿export const BUILD = '0.25';
