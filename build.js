@@ -1,10 +1,10 @@
 // build.js — auto-generiert js/buildinfo.js
 // Changelog kommt aus changes.txt (wird von Claude gepflegt)
 
-import { execSync }                    from 'child_process';
-import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { dirname, join }               from 'path';
-import { fileURLToPath }               from 'url';
+import { execSync }                                          from 'child_process';
+import { writeFileSync, readFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
+import { dirname, join }                                    from 'path';
+import { fileURLToPath }                                    from 'url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
@@ -56,5 +56,17 @@ writeFileSync(buildinfoPath, out, 'utf8');
 
 // changes.txt leeren (für nächsten Release-Zyklus)
 writeFileSync(changesFile, '', 'utf8');
+
+// ── Service Worker Cache-Version aktualisieren ────────────────────────────────
+const swPath = join(__dir, 'sw.js');
+if (existsSync(swPath)) {
+  const swContent = readFileSync(swPath, 'utf8');
+  const updated   = swContent.replace(/werwolf-v[\d.]+/, `werwolf-v${VERSION}`);
+  writeFileSync(swPath, updated, 'utf8');
+}
+
+// ── Version-Datei im Verzeichnis ──────────────────────────────────────────────
+readdirSync(__dir).filter(f => f.startsWith('version-')).forEach(f => unlinkSync(join(__dir, f)));
+writeFileSync(join(__dir, `version-${VERSION}.txt`), `v${VERSION} | ${GIT_HASH} | ${today}\n`, 'utf8');
 
 console.log(`✓ v${VERSION} (${GIT_HASH}) — ${currentChanges.length} Änderungen`);
