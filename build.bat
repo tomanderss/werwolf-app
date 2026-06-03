@@ -23,10 +23,20 @@ git add -A
 echo.
 
 :: Commit mit Zeitstempel
-echo  [3/3] Commit...
+echo  [3/4] Commit...
 for /f "tokens=1-3 delims=." %%a in ("%DATE%") do set D=%%a.%%b.%%c
 for /f "tokens=1-2 delims=:" %%a in ("%TIME: =0%") do set T=%%a:%%b
 git commit -m "Deploy %D% %T%"
+echo.
+
+:: Push
+echo  [4/4] Push...
+git push
+if %ERRORLEVEL% neq 0 (
+  echo  FEHLER: git push fehlgeschlagen!
+  pause
+  exit /b 1
+)
 echo.
 
 echo  ===================================================
