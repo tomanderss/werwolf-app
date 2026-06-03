@@ -1,4 +1,4 @@
-const CACHE = 'werwolf-v0.28';
+const CACHE = 'werwolf-v0.29';
 const ASSETS = [
   './index.html',
   './css/styles.css',
