@@ -1,10 +1,12 @@
 import { createApp, reactive, computed, watch, nextTick } from './vue.esm-browser.prod.js';
-import { BUILD } from './buildinfo.js';
+import { BUILD, CHANGELOG } from './buildinfo.js';
 import { ROLES, ROLE_ORDER, DEFAULT_ROLE_COUNTS, DEFAULT_NIGHT_ORDER, computeNightSteps } from './data.js';
 import { loadPlayers, savePlayers, loadHistory, saveHistory, loadActiveGame, saveActiveGame, loadSettings, saveSettings, generateId, createBackup, loadBackups, restoreBackup, exportToFile, importFromFile } from './storage.js';
 import { createGame, emptyNightActions, resolveNight, checkWinCondition, buildGameStats, computePlayerStats, computeRoleStats } from './logic.js';
 
 const APP_START = Date.now(); // used for minimum splash duration
+const splashVersion = document.getElementById('splash-version');
+if (splashVersion) splashVersion.textContent = `v${BUILD}`;
 
 // ─── GLOBAL STATE ────────────────────────────────────────────────────────────
 const state = reactive({
@@ -49,6 +51,7 @@ const state = reactive({
     loverDiedPartner: null,
   },
   historyDetail: null,
+  showWhatsNew: false,
 });
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -120,6 +123,12 @@ function init() {
   if (active) state.game = active;
   // Auto-backup on every app start
   createBackup('start');
+  // Show What's New popup if version changed
+  const seenVersion = localStorage.getItem('ww_seen_version');
+  if (seenVersion !== BUILD) {
+    state.showWhatsNew = true;
+    localStorage.setItem('ww_seen_version', BUILD);
+  }
 }
 
 function applyTheme() {
@@ -1037,7 +1046,10 @@ function handleImportFile(file) {
 
 // ─── VUE APP ──────────────────────────────────────────────────────────────────
 const App = {
-  setup() { return { state, ROLES, ROLE_ORDER, closeModal }; },
+  setup() {
+    function closeWhatsNew() { state.showWhatsNew = false; }
+    return { state, ROLES, ROLE_ORDER, closeModal, closeWhatsNew };
+  },
   template: `
     <div id="app">
       <!-- Toast -->
@@ -1051,6 +1063,14 @@ const App = {
         </div>
       </div>
 
+      <!-- What's New Popup -->
+      <div v-if="state.showWhatsNew" class="modal-overlay" @click.self="closeWhatsNew" style="z-index:99998">
+        <div class="modal" style="max-height:80vh;overflow-y:auto">
+          <div class="modal-handle"></div>
+          <whats-new-modal @close="closeWhatsNew" />
+        </div>
+      </div>
+
       <!-- Main routing -->
       <home-screen v-if="state.screen === 'home'" />
       <setup-screen v-else-if="state.screen === 'setup'" />
@@ -1059,6 +1079,7 @@ const App = {
       <history-screen v-else-if="state.screen === 'history'" />
       <players-screen v-else-if="state.screen === 'players'" />
       <backup-screen v-else-if="state.screen === 'backup'" />
+      <changelog-screen v-else-if="state.screen === 'changelog'" />
     </div>
   `
 };
@@ -1143,6 +1164,14 @@ const HomeScreen = {
           <div>
             <div class="menu-label">Datensicherung</div>
             <div class="menu-sub">Export, Import &amp; Auto-Backups</div>
+          </div>
+        </div>
+
+        <div class="home-menu-item" @click="navigate('changelog')">
+          <span class="menu-icon">📋</span>
+          <div>
+            <div class="menu-label">Changelog</div>
+            <div class="menu-sub">Was ist neu in Version {{ BUILD }}</div>
           </div>
         </div>
       </div>
@@ -2624,6 +2653,67 @@ const BackupScreen = {
   `
 };
 
+// ─── WHATS NEW MODAL ─────────────────────────────────────────────────────────
+const WhatsNewModal = {
+  emits: ['close'],
+  setup(_, { emit }) {
+    const latest = CHANGELOG[0];
+    return { latest, BUILD, emit };
+  },
+  template: `
+    <div style="padding:4px 0 8px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:2rem;margin-bottom:6px">🎉</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--text1)">Was ist neu?</div>
+        <div style="font-size:0.78rem;color:var(--text3);margin-top:4px">Version {{ BUILD }} · {{ latest.date }}</div>
+      </div>
+      <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:10px">
+        <li v-for="(item, i) in latest.changes" :key="i"
+            style="display:flex;gap:10px;align-items:flex-start;font-size:0.88rem;color:var(--text2);line-height:1.45">
+          <span style="color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px">✦</span>
+          <span>{{ item }}</span>
+        </li>
+      </ul>
+      <button class="btn btn-primary btn-full" @click="emit('close')">Verstanden!</button>
+    </div>
+  `
+};
+
+// ─── CHANGELOG SCREEN ─────────────────────────────────────────────────────────
+const ChangelogScreen = {
+  setup() {
+    return { state, CHANGELOG, BUILD, navigate };
+  },
+  template: `
+    <div class="page">
+      <div class="nav">
+        <button class="nav-btn" @click="navigate('home')">←</button>
+        <span class="nav-title">Changelog</span>
+        <span style="width:44px"></span>
+      </div>
+      <div class="screen">
+        <div v-for="entry in CHANGELOG" :key="entry.version" class="card mb-3">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+            <div style="font-size:1rem;font-weight:800;color:var(--text1)">v{{ entry.version }}</div>
+            <div v-if="entry.version === BUILD"
+                 style="font-size:0.68rem;font-weight:700;color:var(--accent);background:rgba(124,58,237,0.15);border:1px solid var(--accent);border-radius:20px;padding:1px 8px;line-height:1.8">
+              Aktuell
+            </div>
+            <div style="margin-left:auto;font-size:0.75rem;color:var(--text3)">{{ entry.date }}</div>
+          </div>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+            <li v-for="(item, i) in entry.changes" :key="i"
+                style="display:flex;gap:10px;align-items:flex-start;font-size:0.85rem;color:var(--text2);line-height:1.45">
+              <span style="color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px">✦</span>
+              <span>{{ item }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `
+};
+
 // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
 const app = createApp(App);
 app.component('HomeScreen', HomeScreen);
@@ -2633,6 +2723,8 @@ app.component('StatsScreen', StatsScreen);
 app.component('HistoryScreen', HistoryScreen);
 app.component('PlayersScreen', PlayersScreen);
 app.component('BackupScreen', BackupScreen);
+app.component('WhatsNewModal', WhatsNewModal);
+app.component('ChangelogScreen', ChangelogScreen);
 
 // Make helpers accessible in templates via methods on GameScreen
 app.config.globalProperties.$fmt = formatDate;
@@ -2640,12 +2732,12 @@ app.config.globalProperties.$fmt = formatDate;
 init();
 app.mount('#app');
 
-// Hide splash after Vue renders, but always show for at least 2 seconds
+// Hide splash after Vue renders, but always show for at least 1.5 seconds
 nextTick(() => {
   const splash = document.getElementById('splash');
   if (!splash) return;
   const elapsed   = Date.now() - APP_START;
-  const remaining = Math.max(0, 2000 - elapsed);
+  const remaining = Math.max(0, 1500 - elapsed);
   setTimeout(() => {
     splash.classList.add('fade-out');
     setTimeout(() => { if (splash.parentNode) splash.remove(); }, 500);
